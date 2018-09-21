@@ -1822,9 +1822,11 @@ TEEC_Result trusty_read_oem_unlock(uint8_t *unlock)
 	ret = read_from_keymaster((uint8_t *)file, strlen(file),
 		unlock, 1);
 
-	if (ret == TEE_ERROR_ITEM_NOT_FOUND) {
+	/* assure the value of unlock in 0 or 1 */
+	if (ret == TEE_ERROR_ITEM_NOT_FOUND || (*unlock != 1 && *unlock != 0)) {
 		debug("init oem unlock status 0");
 		ret = trusty_write_oem_unlock(0);
+		*unlock = 0;
 	}
 
 	return ret;
