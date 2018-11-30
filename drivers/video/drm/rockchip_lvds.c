@@ -23,6 +23,7 @@
 #include "rockchip_display.h"
 #include "rockchip_crtc.h"
 #include "rockchip_connector.h"
+#include "rockchip_panel.h"
 #include "rockchip_lvds.h"
 
 enum rockchip_lvds_sub_devtype {
@@ -525,8 +526,7 @@ static int rockchip_lvds_init(struct display_state *state)
 	const char *name;
 	int i, width;
 	struct resource lvds_phy, lvds_ctrl;
-	struct panel_state *panel_state = &state->panel_state;
-	ofnode panel_node = panel_state->node;
+	struct rockchip_panel *panel = state_get_panel(state);
 	int ret;
 
 	lvds = malloc(sizeof(*lvds));
@@ -562,7 +562,7 @@ static int rockchip_lvds_init(struct display_state *state)
 		return  -ENXIO;
 	}
 
-	ret = dev_read_string_index(panel_state->dev, "rockchip,output", 0, &name);
+	ret = dev_read_string_index(panel->dev, "rockchip,output", 0, &name);
 	if (ret)
 		/* default set it as output rgb */
 		lvds->output = DISPLAY_OUTPUT_RGB;
@@ -573,7 +573,8 @@ static int rockchip_lvds_init(struct display_state *state)
 		free(lvds);
 		return lvds->output;
 	}
-	ret = dev_read_string_index(panel_state->dev, "rockchip,data-mapping", 0, &name);
+	ret = dev_read_string_index(panel->dev, "rockchip,data-mapping",
+				    0, &name);
 	if (ret)
 		/* default set it as format jeida */
 		lvds->format = LVDS_FORMAT_JEIDA;
@@ -585,7 +586,7 @@ static int rockchip_lvds_init(struct display_state *state)
 		free(lvds);
 		return lvds->format;
 	}
-	width = ofnode_read_u32_default(panel_node, "rockchip,data-width", 24);
+	width = dev_read_u32_default(panel->dev, "rockchip,data-width", 24);
 	if (width == 24) {
 		lvds->format |= LVDS_24BIT;
 	} else if (width == 18) {
