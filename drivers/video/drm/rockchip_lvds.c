@@ -221,6 +221,8 @@ static void px30_output_ttl(struct display_state *state)
 	struct rockchip_lvds_device *lvds = conn_state->private;
 	u32 val = 0;
 
+	lvds_writel(lvds, MIPIPHY_REG0, 0x01);
+
 	/* enable lvds mode */
 	val = PX30_RGB_SYNC_BYPASS(1) | PX30_DPHY_FORCERXMODE(1);
 	writel(val, lvds->grf + PX30_GRF_PD_VO_CON1);
@@ -300,6 +302,8 @@ static void px30_output_lvds(struct display_state *state)
 	struct connector_state *conn_state = &state->conn_state;
 	struct rockchip_lvds_device *lvds = conn_state->private;
 	u32 val = 0;
+
+	lvds_writel(lvds, MIPIPHY_REG0, 0x01);
 
 	/* enable lvds mode */
 	val = PX30_LVDS_PHY_MODE(1) | PX30_DPHY_FORCERXMODE(1);
