@@ -130,7 +130,7 @@ struct logo_info {
 	bool ymirror;
 	u32 offset;
 	u32 width;
-	u32 height;
+	int height;
 	u32 bpp;
 };
 
