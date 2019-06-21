@@ -170,6 +170,8 @@ int board_late_init(void)
 #ifdef CONFIG_USING_KERNEL_DTB
 #include <asm/arch/resource_img.h>
 
+extern void devtype_num_envset(void);
+
 int init_kernel_dtb(void)
 {
 	int ret = 0;
@@ -193,8 +195,13 @@ scan_nand:
 	ret = uclass_get_device(UCLASS_RKNAND, 0, &dev);
 	if (ret) {
 		printf("%s: Cannot find rknand device\n", __func__);
-		return -1;
+		goto bootdev_cmd;
+	} else {
+		goto init_dtb;
 	}
+
+bootdev_cmd:
+	devtype_num_envset();
 
 init_dtb:
 	fdt_addr = env_get_ulong("fdt_addr_r", 16, 0);
