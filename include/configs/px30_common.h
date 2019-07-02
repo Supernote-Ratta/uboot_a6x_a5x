@@ -42,6 +42,12 @@
 #define SDRAM_BANK_SIZE			(2UL << 30)
 #define CONFIG_PREBOOT
 
+#define ROCKCHIP_SUPPORT_EINK
+/* base block addr of eink waveform file on storage */
+#define EINK_WAVEFORM_BASE	0x8000
+/* eink waveform file size (Bytes) */
+#define EINK_WAVEFORM_SIZE	512000
+
 #ifndef CONFIG_SPL_BUILD
 
 /* usb mass storage */
@@ -53,6 +59,7 @@
 	"pxefile_addr_r=0x00600000\0" \
 	"fdt_addr_r=0x01f00000\0" \
 	"kernel_addr_r=0x02080000\0" \
+	"waveform_add_r=0x08300000\0" \
 	"ramdisk_addr_r=0x0a200000\0"
 
 #include <config_distro_bootcmd.h>

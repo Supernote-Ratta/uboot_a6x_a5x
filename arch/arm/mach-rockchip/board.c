@@ -160,6 +160,11 @@ int board_late_init(void)
 #ifdef CONFIG_DRM_ROCKCHIP
 	rockchip_show_logo();
 #endif
+
+#ifdef ROCKCHIP_SUPPORT_EINK
+	rockchip_read_eink_waveform();
+#endif
+
 	rockchip_set_serialno();
 
 	soc_clk_dump();

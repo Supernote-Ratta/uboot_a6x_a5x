@@ -24,5 +24,7 @@
 void rockchip_show_bmp(const char *bmp);
 void rockchip_show_logo(void);
 void rockchip_display_fixup(void *blob);
-
+#ifdef ROCKCHIP_SUPPORT_EINK
+void rockchip_read_eink_waveform(void);
+#endif
 #endif

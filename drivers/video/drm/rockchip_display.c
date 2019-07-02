@@ -22,6 +22,7 @@
 #include <dm/device.h>
 #include <dm/uclass-internal.h>
 #include <asm/arch-rockchip/resource_img.h>
+#include <boot_rkimg.h>
 
 #include "bmp_helper.h"
 #include "rockchip_display.h"
@@ -1190,6 +1191,34 @@ void rockchip_show_logo(void)
 		/* Load kernel bmp in rockchip_display_fixup() later */
 	}
 }
+
+#ifdef ROCKCHIP_SUPPORT_EINK
+void rockchip_read_eink_waveform(void)
+{
+	struct blk_desc *dev_desc;
+	ulong waveform_addr_r = env_get_ulong("waveform_add_r", 16, 0);
+	int ret;
+	int cnt;
+
+	printf("enter %s\n", __func__);
+	dev_desc = rockchip_get_bootdev();
+	if (!dev_desc) {
+		printf("%s: Could not find device\n", __func__);
+		return;
+	}
+
+	cnt = DIV_ROUND_UP(EINK_WAVEFORM_SIZE, RK_BLK_SIZE);
+
+	ret = blk_dread(dev_desc, EINK_WAVEFORM_BASE, cnt, (void *)waveform_addr_r);
+	if (ret != cnt) {
+		printf("%s: try to read %d blocks failed, only read %d blocks\n", __func__, cnt, ret);
+	}
+
+	printf("exit %s\n", __func__);
+
+	return;
+}
+#endif
 
 enum {
 	PORT_DIR_IN,
