@@ -95,6 +95,30 @@ static int rockchip_set_serialno(void)
 	return ret;
 }
 
+#ifdef ROCKCHIP_SUPPORT_EINK
+#define EINK_VCOM_ID 12
+#define EINK_VCOM_MAX 64
+static int rockchip_read_vcom_value(void)
+{
+	char vcom_str[EINK_VCOM_MAX];
+	char vcom_args[EINK_VCOM_MAX];
+	int ret = 0;
+
+	/* Read vcom value from vendor storage part */
+	memset(vcom_str, 0, EINK_VCOM_MAX);
+	memset(vcom_args, 0, EINK_VCOM_MAX);
+	ret = vendor_storage_read(EINK_VCOM_ID, vcom_str, (EINK_VCOM_MAX-1));
+	if (ret > 0) {
+		//printf("vcom vendor str: %s\n", vcom_str);
+		snprintf(vcom_args, strlen(vcom_str) + 6, "vcom=%s", vcom_str);
+		//printf("update bootargs: %s\n", vcom_args);
+		env_update("bootargs", vcom_args);
+	}
+
+	return ret;
+}
+#endif
+
 #if defined(CONFIG_USB_FUNCTION_FASTBOOT)
 int fb_set_reboot_flag(void)
 {
@@ -163,6 +187,7 @@ int board_late_init(void)
 
 #ifdef ROCKCHIP_SUPPORT_EINK
 	rockchip_read_eink_waveform();
+	rockchip_read_vcom_value();
 #endif
 
 	rockchip_set_serialno();
