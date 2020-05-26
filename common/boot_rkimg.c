@@ -56,10 +56,10 @@ static void set_ratta_bootmode(const char *mode)
 	if (old) {
 		memset(new, 0, sizeof(new));
 		if (old[strlen(old) - 1] == ' ')
-			snprintf(new, sizeof(new) - 1, "%sratta.bootmode=%s",
+			snprintf(new, sizeof(new) - 1, "%sratta.bootmode=%s androidboot.selinux=permissive",
 				 old, mode);
 		else
-			snprintf(new, sizeof(new) - 1, "%s ratta.bootmode=%s",
+			snprintf(new, sizeof(new) - 1, "%s ratta.bootmode=%s androidboot.selinux=permissive",
 				 old, mode);
 		if (new[0])
 			env_update("bootargs", new);
