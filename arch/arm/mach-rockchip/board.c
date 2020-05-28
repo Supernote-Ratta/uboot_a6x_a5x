@@ -31,6 +31,7 @@
 #include <mmc.h>
 #include <of_live.h>
 #include <dm/root.h>
+#include <boot_ratta.h>
 
 DECLARE_GLOBAL_DATA_PTR;
 /* define serialno max length, the max length is 512 Bytes
@@ -191,6 +192,7 @@ int board_late_init(void)
 #endif
 
 	rockchip_set_serialno();
+	ratta_set_boot_mode();
 
 	soc_clk_dump();
 
