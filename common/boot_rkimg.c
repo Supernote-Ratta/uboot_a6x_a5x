@@ -47,29 +47,6 @@ struct rockchip_image {
 	uint32_t crc;
 };
 
-static void set_ratta_bootmode(const char *mode)
-{
-	char *old, new[256];
-
-	old = env_get("bootargs");
-
-	if (old) {
-		memset(new, 0, sizeof(new));
-		if (old[strlen(old) - 1] == ' ')
-			snprintf(new, sizeof(new) - 1, "%sratta.bootmode=%s androidboot.selinux=permissive",
-				 old, mode);
-		else
-			snprintf(new, sizeof(new) - 1, "%s ratta.bootmode=%s androidboot.selinux=permissive",
-				 old, mode);
-		if (new[0])
-			env_update("bootargs", new);
-	}
-
-	old = env_get("bootargs");
-
-	printf("set_ratta_bootmode: bootargs=%s\n", old);
-}
-
 #if !defined(CONFIG_ARM64)
 #ifdef CONFIG_LMB
 static void boot_start_lmb(bootm_headers_t *images)
@@ -376,10 +353,6 @@ int rockchip_get_boot_mode(void)
 		case BOOT_NORMAL:
 			printf("boot mode: normal\n");
 			boot_mode = BOOT_MODE_NORMAL;
-			if (!strcmp(bmsg->command, "boot-factory"))
-				set_ratta_bootmode("factory");
-			else
-				set_ratta_bootmode("normal");
 			break;
 		case BOOT_FASTBOOT:
 			printf("boot mode: bootloader\n");
@@ -392,7 +365,6 @@ int rockchip_get_boot_mode(void)
 		case BOOT_RECOVERY:
 			/* printf("boot mode: recovery\n"); */
 			boot_mode = BOOT_MODE_RECOVERY;
-			set_ratta_bootmode("recovery");
 			break;
 		case BOOT_UMS:
 			printf("boot mode: ums\n");
@@ -401,12 +373,10 @@ int rockchip_get_boot_mode(void)
 		case BOOT_CHARGING:
 			printf("boot mode: charging\n");
 			boot_mode = BOOT_MODE_CHARGING;
-			set_ratta_bootmode("charge");
 			break;
 		default:
 			printf("boot mode: None\n");
 			boot_mode = BOOT_MODE_UNDEFINE;
-			set_ratta_bootmode("none");
 		}
 	}
 
