@@ -46,6 +46,7 @@ int ratta_set_boot_mode(void)
 	struct blk_desc *dev_desc;
 	disk_partition_t part_info;
 	struct bootloader_message *bmsg;
+	struct bootloader_message msg;
 	int size = DIV_ROUND_UP(sizeof(struct bootloader_message), RK_BLK_SIZE)
 		   * RK_BLK_SIZE;
 	int ret;
@@ -76,6 +77,12 @@ int ratta_set_boot_mode(void)
 		ratta_set_bootmode("recovery");
 	} else if (!strcmp(bmsg->command, "boot-factory")) {
 		ratta_set_bootmode("factory");
+		memset(&msg, 0, sizeof(msg));
+		ret = blk_dwrite(dev_desc,
+				 part_info.start + BOOTLOADER_MESSAGE_BLK_OFFSET,
+				 size >> 9, &msg);
+		if (ret != (size >> 9))
+			printf("clear factory boot message failed,%d\n", ret);
 	} else {
 		ratta_set_bootmode("normal");
 	}
