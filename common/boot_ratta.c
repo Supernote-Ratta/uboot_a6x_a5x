@@ -23,22 +23,13 @@ struct bootloader_message {
 
 static void ratta_set_bootmode(const char *mode)
 {
-	char *old, new[256];
+	char new[256];
 
-	old = env_get("bootargs");
-
-	if (old) {
-		memset(new, 0, sizeof(new));
-		snprintf(new, sizeof(new) - 1,
-			 "%s ratta.bootmode=%s androidboot.selinux=permissive",
-			 old, mode);
-		if (new[0])
-			env_update("bootargs", new);
-	}
-
-	old = env_get("bootargs");
-
-	printf("ratta_do_set_bootmode: bootargs=%s\n", old);
+	memset(new, 0, sizeof(new));
+	snprintf(new, sizeof(new) - 1,
+		 "ratta.bootmode=%s androidboot.selinux=permissive",
+		 mode);
+	env_update("bootargs", new);
 }
 
 int ratta_set_boot_mode(void)
