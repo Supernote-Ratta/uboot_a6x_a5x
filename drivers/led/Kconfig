@@ -19,6 +19,15 @@ config LED_BCM6328
 	  All LEDs can blink at the same time but the delay is shared, which
 	  means that if one LED is set to blink at 100ms and then a different
 	  LED is set to blink at 200ms, both will blink at 200ms.
+	 
+config LED_AW2013
+	bool "LED Support for AW2013"
+	depends on LED
+	help
+	  This option enables support for LEDs connected to the AW2013 
+	  LED HW controller accessed via i2c bus.
+	  HW blinking is supported and up to 3 LEDs can be controlled.
+	  All LEDs can blink at the same time. 
 
 config LED_BCM6358
 	bool "LED Support for BCM6358"
