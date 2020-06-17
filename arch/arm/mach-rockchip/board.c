@@ -32,6 +32,7 @@
 #include <of_live.h>
 #include <dm/root.h>
 #include <boot_ratta.h>
+#include <led.h>
 
 DECLARE_GLOBAL_DATA_PTR;
 /* define serialno max length, the max length is 512 Bytes
@@ -169,8 +170,28 @@ static int charge_display(void)
 }
 #endif
 
-__weak int rk_board_init(void)
+static int led_display(void)
 {
+	int ret;
+	struct udevice *dev;
+
+	ret = led_get_by_label("red", &dev);
+	if (ret) {
+		debug("%s: get=%d\n", __func__, ret);
+		return ret;
+	}
+
+	printf("%s-%d %s\n",__func__,__LINE__,dev->name);
+	ret = led_set_state(dev, LEDST_ON);
+	if ( ret < 0 )
+		printf("%s-%d ret = %d\n",__func__,__LINE__,ret);
+
+	return ret;
+}
+
+int rk_board_init(void)
+{
+	led_display();
 	return 0;
 }
 
