@@ -27,8 +27,10 @@ static void ratta_set_bootmode(const char *mode)
 
 	memset(new, 0, sizeof(new));
 	snprintf(new, sizeof(new) - 1,
-		 "ratta.bootmode=%s androidboot.selinux=permissive",
-		 mode);
+		 "ratta.bootmode=%s%s",
+		 mode,
+		 !strcmp(mode, "factory") ?
+		 " androidboot.selinux=permissive" : "");
 	env_update("bootargs", new);
 }
 
