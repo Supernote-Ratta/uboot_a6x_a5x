@@ -528,7 +528,7 @@ static int rockchip_read_dtb_by_gpio(const char *file_name)
 				readl(gpio_base_addr[port] + GPIO_EXT_PORT);
 
 		/* Verify result */
-		bit = bank * 32 + pin;
+		bit = bank * 8 + pin;
 		val = cached_v[port] & (1 << bit) ? 1 : 0;
 
 		if (val == !!lvl) {
@@ -539,8 +539,8 @@ static int rockchip_read_dtb_by_gpio(const char *file_name)
 			break;
 		}
 
-		debug("   - parse: gpio%d%c%d=%d, read=%d %s\n",
-		      port, bank + 'a', pin, lvl, val, found ? "(Y)" : "");
+		printf("   - parse: gpio%d%c%d=%d, read=%d %s\n",
+		       port, bank + 'a', pin, lvl, val, found ? "(Y)" : "");
 	}
 
 	return found ? 0 : -ENOENT;

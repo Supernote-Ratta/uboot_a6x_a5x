@@ -344,7 +344,6 @@ int rockchip_get_boot_mode(void)
 	if (!strcmp(bmsg->command, "boot-recovery")) {
 		boot_mode = BOOT_MODE_RECOVERY;
 	} else {
-
 		/* Mode from boot mode register */
 		reg_boot_mode = readl((void *)CONFIG_ROCKCHIP_BOOT_MODE_REG);
 		writel(BOOT_NORMAL, (void *)CONFIG_ROCKCHIP_BOOT_MODE_REG);

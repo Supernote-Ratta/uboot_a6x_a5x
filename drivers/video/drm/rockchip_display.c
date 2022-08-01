@@ -35,6 +35,9 @@
 #include <dm/of_access.h>
 #include <dm/ofnode.h>
 
+// 20191120,hsl add for eink.
+#include "prv_info.h"
+
 #define DRIVER_VERSION	"v1.0.0"
 
 /***********************************************************************
@@ -43,6 +46,9 @@
  *  v1.0.0	: add basic version for rockchip drm driver(hjc)
  *
  **********************************************************************/
+
+// 20191119,hsl:don't need to display normal logo.
+#define DISP_LOGO		0
 
 #define RK_BLK_SIZE 512
 #define BMP_PROCESSED_FLAG 8399
@@ -146,6 +152,12 @@ static void init_display_buffer(ulong base)
 	memory_end = memory_start;
 }
 
+static unsigned long get_display_size(void)
+{
+	return memory_end - memory_start;
+}
+
+#if DISP_LOGO
 static void *get_display_buffer(int size)
 {
 	unsigned long roundup_memory = roundup(memory_end, PAGE_SIZE);
@@ -162,15 +174,12 @@ static void *get_display_buffer(int size)
 	return buf;
 }
 
-static unsigned long get_display_size(void)
-{
-	return memory_end - memory_start;
-}
 
 static bool can_direct_logo(int bpp)
 {
 	return bpp == 24 || bpp == 32;
 }
+#endif
 
 static int connector_phy_init(struct display_state *state,
 			      struct public_phy_data *data)
@@ -1008,7 +1017,7 @@ struct rockchip_logo_cache *find_or_alloc_logo_cache(const char *bmp)
 /* Note: used only for rkfb kernel driver */
 static int load_kernel_bmp_logo(struct logo_info *logo, const char *bmp_name)
 {
-#ifdef CONFIG_ROCKCHIP_RESOURCE_IMAGE
+#if DISP_LOGO && defined(CONFIG_ROCKCHIP_RESOURCE_IMAGE)
 	void *dst = NULL;
 	int len, size;
 	struct bmp_header *header;
@@ -1037,12 +1046,14 @@ static int load_kernel_bmp_logo(struct logo_info *logo, const char *bmp_name)
 	logo->mem = dst;
 
 	return 0;
+#else
+	return -EINVAL;
 #endif
 }
 
 static int load_bmp_logo(struct logo_info *logo, const char *bmp_name)
 {
-#ifdef CONFIG_ROCKCHIP_RESOURCE_IMAGE
+#if DISP_LOGO && defined(CONFIG_ROCKCHIP_RESOURCE_IMAGE)
 	struct rockchip_logo_cache *logo_cache;
 	struct bmp_header *header;
 	void *dst = NULL, *pdst;
@@ -1193,28 +1204,84 @@ void rockchip_show_logo(void)
 }
 
 #ifdef ROCKCHIP_SUPPORT_EINK
+static bool rockchip_check_pvi_valid(struct pvdata_info	*pvi) 
+{
+	// 20210727: 将来 struct-size 可能会变大，但是不会变小。所以这里只能比较一个
+	// 最小值。不能用 sizeof(struct pvdata_info)，因为结构体变化了， 这个值会变化，
+	// 但是 pvi->struct_size 里面的值可能就不会变化，保持原来旧的值。
+	if( pvi->tag != PVDATA_TAG || pvi->key_item_cnt <= 0
+		|| pvi->struct_size < 48 // sizeof(struct pvdata_info)
+		|| pvi->struct_size > 1024) {
+		return false;
+	}
+	return true;
+}
 void rockchip_read_eink_waveform(void)
 {
 	struct blk_desc *dev_desc;
 	ulong waveform_addr_r = env_get_ulong("waveform_add_r", 16, 0);
+	ulong logo_addr_r = env_get_ulong("logo_add_r", 16, 0);
 	int ret;
 	int cnt;
+	int  base_addrx = PRIVATE_BASE;
+	struct pvdata_info	*pvi = (struct pvdata_info *)waveform_addr_r;
 
-	printf("enter %s\n", __func__);
+	// 20191120: enter rockchip_read_eink_waveform,wf addr=0x8300000,logo addr=0x10000000
+	// printf("enter %s,wf addr=0x%lx,logo addr=0x%lx\n", __func__, waveform_addr_r, logo_addr_r);
 	dev_desc = rockchip_get_bootdev();
 	if (!dev_desc) {
 		printf("%s: Could not find device\n", __func__);
 		return;
 	}
-
-	cnt = DIV_ROUND_UP(EINK_WAVEFORM_SIZE, RK_BLK_SIZE);
-
-	ret = blk_dread(dev_desc, EINK_WAVEFORM_BASE, cnt, (void *)waveform_addr_r);
+	cnt = DIV_ROUND_UP(PV_HEAD_SIZE, RK_BLK_SIZE); // 20191120:目前读取 512应该足够了.为了后续不需要修改代码，此处读取所有预留的头部。
+	ret = blk_dread(dev_desc, base_addrx, cnt, (void *)pvi);
 	if (ret != cnt) {
-		printf("%s: try to read %d blocks failed, only read %d blocks\n", __func__, cnt, ret);
+		printf("%s: try to read %d blocks pv-head, only read %d blocks\n", __func__, cnt, ret);
+		return;
+	}
+	
+	if( !rockchip_check_pvi_valid(pvi) ) {
+		// 20210715: 我们有可能放在另外一个位置（因为 parameter分区不一样）
+		printf("Invalid PVI-BASE:tag=0x%x,ssize=%d,addr=0x%x,try BASE_X\n", pvi->tag, pvi->struct_size, base_addrx);
+
+		base_addrx = PRIVATE_BASE_X;
+		blk_dread(dev_desc, base_addrx, cnt, (void *)pvi);
+		if( !rockchip_check_pvi_valid(pvi) ) {
+			printf("Invalid PVI-BASE_X:tag=0x%x,ssize=%d,addr=0x%x\n", pvi->tag, pvi->struct_size, base_addrx);
+			return;
+		}
 	}
 
-	printf("exit %s\n", __func__);
+	//20191120：PVI:tag=0x48544659,ssize=52,wf_size=0/0x0,logo_size=2628288/0x80000,cnt=1,ret=2
+	printf("PVI:tag=0x%x,ssize=%d,wf=%d/0x%x,logo=%d/0x%x,key_cnt=%d,addrx=%0x\n", pvi->tag, pvi->struct_size,
+		pvi->wf_size, pvi->wf_offset, pvi->logo_size, pvi->logo_offset, pvi->key_item_cnt, base_addrx);
+
+	if( pvi->wf_size > 0) {
+	    //tanlq mod 191009 read waveform & logo
+		cnt = DIV_ROUND_UP(pvi->wf_size/*(EINK_WAVEFORM_SIZE)*/, RK_BLK_SIZE);
+
+		ret = blk_dread(dev_desc, base_addrx + pvi->wf_offset/RK_BLK_SIZE /* EINK_WAVEFORM_BASE*/, cnt,
+			(void *)(waveform_addr_r+WAVE_FORM_OFFSET));
+		if (ret != cnt) {
+			printf("%s: try to read %d blocks for wf, only read %d blocks\n", __func__, cnt, ret);
+		}
+	}
+
+	if( pvi->logo_size > 0) {
+	    //tanlq mod 191009 read waveform & logo
+		cnt = DIV_ROUND_UP(pvi->logo_size/*(EINK_WAVEFORM_SIZE)*/, RK_BLK_SIZE);
+
+		ret = blk_dread(dev_desc, base_addrx + pvi->logo_offset/RK_BLK_SIZE /* EINK_WAVEFORM_BASE*/, cnt,
+			(void *)(logo_addr_r));
+		if (ret != cnt) {
+			printf("%s: try to read %d blocks for logo, only read %d blocks\n", __func__, cnt, ret);
+		} else {
+			//char *fb = (char*)logo_addr_r;
+			//printf("%s: ret=%d, fb=[%02x %02x %02x %02x]\n", __func__, ret, fb[0], fb[1], fb[2], fb[3]);
+		}
+	}
+
+	//printf("exit %s\n", __func__);
 
 	return;
 }

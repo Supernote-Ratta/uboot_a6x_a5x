@@ -32,8 +32,7 @@
 		vol-up-key {
 			linux,code = <KEY_VOLUMEUP>;
 			label = "volume up";
-			//tanlq 210520 for iflytekT2
-			press-threshold-microvolt = <900000>; //<10000>;
+			press-threshold-microvolt = <00000>;
 		};
 
 		vol-down-key {
@@ -434,9 +433,4 @@
 
 &u2phy_host {
 	status = "okay";
-};
-
-&saradc {
-   u-boot,dm-pre-reloc;
-   status = "okay";
 };

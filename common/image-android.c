@@ -154,9 +154,22 @@ int android_image_get_ramdisk(const struct andr_img_hdr *hdr,
 int android_image_get_fdt(const struct andr_img_hdr *hdr,
 			      ulong *rd_data)
 {
+	ulong fdt_addr_r;
+
 	if (!hdr->second_size) {
 		*rd_data = 0;
 		return -1;
+	}
+
+	fdt_addr_r = env_get_ulong("fdt_addr_r", 16, 0);
+	if (!fdt_addr_r) {
+		printf("No Found FDT Load Address.\n");
+		return -1;
+	}
+
+	if (!fdt_check_header((void *)fdt_addr_r)) {
+		*rd_data = fdt_addr_r;
+		return 0;
 	}
 
 	printf("FDT load addr 0x%08x size %u KiB\n",
@@ -170,6 +183,8 @@ int android_image_get_fdt(const struct andr_img_hdr *hdr,
 	*rd_data += (rockchip_get_resource_file((void *)*rd_data,
 		     ANDROID_ARG_FDT_FILENAME))
 			* 512;
+			printf("rd_data addr %p\n",
+	      rd_data);
 #endif
 	return 0;
 }

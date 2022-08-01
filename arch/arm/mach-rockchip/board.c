@@ -31,7 +31,6 @@
 #include <mmc.h>
 #include <of_live.h>
 #include <dm/root.h>
-#include <boot_ratta.h>
 #include <led.h>
 
 DECLARE_GLOBAL_DATA_PTR;
@@ -96,47 +95,6 @@ static int rockchip_set_serialno(void)
 #endif
 	return ret;
 }
-
-#ifdef ROCKCHIP_SUPPORT_EINK
-#define EINK_VCOM_ID 12
-#define EINK_VCOM_MAX 64
-static int rockchip_read_vcom_value(void)
-{
-	char vcom_str[EINK_VCOM_MAX];
-	char vcom_args[EINK_VCOM_MAX];
-	char *tmp;
-	int ret = 0, sum;
-
-	/* Read vcom value from vendor storage part */
-	memset(vcom_str, 0, EINK_VCOM_MAX);
-	memset(vcom_args, 0, EINK_VCOM_MAX);
-	ret = vendor_storage_read(EINK_VCOM_ID, vcom_str, (EINK_VCOM_MAX-1));
-	if (ret > 0) {
-		tmp = strchr(vcom_str, '.');
-		if (tmp && (tmp > vcom_str) &&
-		    ((tmp - vcom_str) < (EINK_VCOM_MAX - 3))) {
-			sum = (tmp[-1] - '0') * 1000 +
-				(tmp[1] - '0') * 100 + (tmp[2] - '0') * 10;
-			memset(vcom_str, 0, EINK_VCOM_MAX);
-			snprintf(vcom_str, EINK_VCOM_MAX - 1, "%d", sum);
-		}
-
-		tmp = strchr(vcom_str, '\n');
-		if (tmp)
-			*tmp = 0;
-		tmp = strchr(vcom_str, '\r');
-		if (tmp)
-			*tmp = 0;
-
-		//printf("vcom vendor str: %s\n", vcom_str);
-		snprintf(vcom_args, strlen(vcom_str) + 6, "vcom=%s", vcom_str);
-		//printf("update bootargs: %s\n", vcom_args);
-		env_update("bootargs", vcom_args);
-	}
-
-	return ret;
-}
-#endif
 
 #if defined(CONFIG_USB_FUNCTION_FASTBOOT)
 int fb_set_reboot_flag(void)
@@ -220,17 +178,15 @@ int board_late_init(void)
 	charge_display();
 #endif
 
-#ifdef CONFIG_DRM_ROCKCHIP
-	rockchip_show_logo();
-#endif
-
 #ifdef ROCKCHIP_SUPPORT_EINK
 	rockchip_read_eink_waveform();
-	rockchip_read_vcom_value();
+#else 
+	#ifdef CONFIG_DRM_ROCKCHIP
+		rockchip_show_logo();
+	#endif
 #endif
 
 	rockchip_set_serialno();
-	ratta_set_boot_mode();
 
 	soc_clk_dump();
 
@@ -305,6 +261,10 @@ int board_init(void)
 
 #if !defined(CONFIG_SUPPORT_SPL)
 	board_debug_uart_init();
+#endif
+#ifdef CONFIG_RATTA_BOARD
+	extern void board_id_init(void);
+	board_id_init();
 #endif
 #ifdef CONFIG_USING_KERNEL_DTB
 	init_kernel_dtb();

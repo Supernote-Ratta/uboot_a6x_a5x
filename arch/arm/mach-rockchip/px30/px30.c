@@ -182,6 +182,43 @@ void board_debug_uart_init(void)
 #endif
 }
 
+#ifdef CONFIG_RATTA_BOARD
+void board_id_init(void)
+{
+	static struct px30_grf * const grf = (void *)GRF_BASE;
+
+	enum {
+		GPIO2B0_SHIFT		= 0,
+		GPIO2B0_MASK		= 0xf << GPIO2B0_SHIFT,
+		GPIO2B0_GPIO		= 0,
+		GPIO2B0_CIF_VSYNCM0,
+	};
+
+	rk_clrsetreg(&grf->gpio2bl_iomux,
+		     GPIO2B0_MASK,
+		     GPIO2B0_GPIO << GPIO2B0_SHIFT);
+
+	enum {
+		GPIO2B4_SHIFT		= 0,
+		GPIO2B4_MASK		= 0xf << GPIO2B4_SHIFT,
+		GPIO2B4_GPIO		= 0,
+		GPIO2B4_CIF_D0M0,
+		GPIO2B4_UART2_TXM1,
+
+		GPIO2B5_SHIFT		= 4,
+		GPIO2B5_MASK		= 0xf << GPIO2B5_SHIFT,
+		GPIO2B5_GPIO		= 0,
+		GPIO2B5_PWM2,
+	};
+
+	rk_clrsetreg(&grf->gpio2bh_iomux,
+		     GPIO2B4_MASK | GPIO2B5_MASK,
+		     (GPIO2B4_GPIO << GPIO2B4_SHIFT) | (GPIO2B5_GPIO << GPIO2B5_SHIFT));
+
+	rk_clrsetreg(&grf->gpio2b_p, 0x3 | (0x3 << 8) | (0x3 << 10), 0x2 | (0x2 << 8) | (0x2 << 10));
+}
+#endif
+
 int set_armclk_rate(void)
 {
 	struct px30_clk_priv *priv;

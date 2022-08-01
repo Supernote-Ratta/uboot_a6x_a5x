@@ -43,10 +43,21 @@
 #define CONFIG_PREBOOT
 
 #define ROCKCHIP_SUPPORT_EINK
+#define HTFYUN_EINK
+#ifdef HTFYUN_EINK
+#define PRIVATE_BASE        0x8b000	/* the start-addr of privdata area at parameter */
+/* base block addr of eink waveform file on storage */
+/* #define EINK_WAVEFORM_BASE	(PRIVATE_BASE+0x800)*/ /* 1M->1320 for waveform */
+/* eink waveform file size (Bytes) */
+/*#define EINK_WAVEFORM_SIZE	(328*1024)*/
+/* #define EINK_LOGO_SIZE	2048000 */
+#define PRIVATE_BASE_X      0x83000
+#else
 /* base block addr of eink waveform file on storage */
 #define EINK_WAVEFORM_BASE	0x8000
 /* eink waveform file size (Bytes) */
 #define EINK_WAVEFORM_SIZE	512000
+#endif
 
 #ifndef CONFIG_SPL_BUILD
 
@@ -55,12 +66,13 @@
 #define CONFIG_ROCKUSB_G_DNL_PID        0x330d
 
 #define ENV_MEM_LAYOUT_SETTINGS \
-	"scriptaddr=0x00500000\0" \
-	"pxefile_addr_r=0x00600000\0" \
-	"fdt_addr_r=0x01f00000\0" \
-	"kernel_addr_r=0x02080000\0" \
-	"waveform_add_r=0x08300000\0" \
-	"ramdisk_addr_r=0x0a200000\0"
+        "scriptaddr=0x00500000\0" \
+        "pxefile_addr_r=0x00600000\0" \
+        "fdt_addr_r=0x01f00000\0" \
+        "kernel_addr_r=0x02080000\0" \
+        "waveform_add_r=0x08300000\0" \
+        "logo_add_r=0x10000000\0" \
+        "ramdisk_addr_r=0x0a200000\0"
 
 #include <config_distro_bootcmd.h>
 #define CONFIG_EXTRA_ENV_SETTINGS \

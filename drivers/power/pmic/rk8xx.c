@@ -19,7 +19,10 @@ DECLARE_GLOBAL_DATA_PTR;
 #ifdef CONFIG_DM_CHARGE_DISPLAY
 static struct reg_data rk817_init_reg[] = {
 	/* Set pmic_sleep as sleep function */
-	//{ RK817_PMIC_SYS_CFG3, 0x08, 0x18 },
+	//{ RK817_PMIC_SYS_CFG3, 0x08, 0x18 },  //fix for sn.
+
+	// 20210714: config long power-key reset time. 12s-reset.
+	{ 0xf7,  0x7a, 0xff },
 	/* Set pmic_int active low */
 	{ RK817_GPIO_INT_CFG,  0x00, 0x02 },
 };

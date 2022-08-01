@@ -890,6 +890,14 @@ void board_init_f(ulong boot_flags)
 
 	if (initcall_run_list(init_sequence_f))
 		hang();
+	//tanlq 200325 jtag gpios can't been controled
+	/* Configure GRF_CPU_CON1 */
+		printf("GRF_CPU_CON1 :%x\n", readl(0xff140504));
+		int val = readl(0xff140504);
+		val |= (1<<(7+16)); //write_enable 使能bit7
+		val &= ~(1<<7);
+		writel(val, 0xff140504);  //grf_force_jtag 值为0
+		printf("GRF_CPU_CON1 :%x\n", readl(0xff140504));
 
 #if !defined(CONFIG_ARM) && !defined(CONFIG_SANDBOX) && \
 		!defined(CONFIG_EFI_APP) && !CONFIG_IS_ENABLED(X86_64)

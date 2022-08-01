@@ -20,7 +20,7 @@
 
 DECLARE_GLOBAL_DATA_PTR;
 
-static int dbg_enable = 0;
+static int dbg_enable = 1;
 #define DBG(args...) \
 	do { \
 		if (dbg_enable) { \
@@ -465,7 +465,7 @@ static void rk817_bat_init_coulomb_cap(struct rk817_battery_device *battery,
 {
 	u8 buf;
 	u32 cap;
-	u32 val;
+	u32 val, temp;
 
 	cap = CAPACITY_TO_ADC(capacity, battery->res_div);
 
@@ -477,6 +477,10 @@ static void rk817_bat_init_coulomb_cap(struct rk817_battery_device *battery,
 		buf = (cap >> 8) & 0xff;
 		rk817_bat_write(battery, Q_INIT_L1, buf);
 		buf = (cap >> 0) & 0xff;
+		temp = rk817_bat_read(battery, Q_INIT_L0);
+		if (temp == buf)
+			buf += 1;
+
 		rk817_bat_write(battery, Q_INIT_L0, buf);
 
 		val = rk817_bat_read(battery, Q_INIT_H3) << 24;
@@ -580,6 +584,8 @@ static int rk817_bat_vol_to_cap(struct rk817_battery_device *battery,
 	ocv_size = battery->ocv_size;
 	temp = interpolate(voltage, ocv_table, ocv_size);
 	capacity = ab_div_c(temp, battery->fcc, MAX_INTERPOLATE);
+	printf(" tanlq rk817_bat_vol_to_cap ocv_size= %d,temp=%d,design_cap:%d,capacity=%d,\n", 
+	ocv_size,temp,battery->design_cap,capacity);
 
 	return capacity;
 }
@@ -642,6 +648,7 @@ static bool is_rk817_bat_first_pwron(struct rk817_battery_device *battery)
 	return false;
 }
 
+#if 1
 static int rk817_bat_get_off_count(struct rk817_battery_device *battery)
 {
 	int value;
@@ -651,6 +658,7 @@ static int rk817_bat_get_off_count(struct rk817_battery_device *battery)
 
 	return value;
 }
+#endif 
 
 static void rk817_bat_update_qmax(struct rk817_battery_device *battery,
 				  u32 capacity)
@@ -682,7 +690,6 @@ static void rk817_bat_save_fcc(struct rk817_battery_device *battery, int  fcc)
 	buf = (fcc >> 0) & 0xff;
 	rk817_bat_write(battery, NEW_FCC_REG0, buf);
 }
-
 static void rk817_bat_first_pwron(struct rk817_battery_device *battery)
 {
 	battery->rsoc =
@@ -699,6 +706,7 @@ static void rk817_bat_first_pwron(struct rk817_battery_device *battery)
 	DBG("%s, rsoc = %d, dsoc = %d, fcc = %d, nac = %d\n",
 	    __func__, battery->rsoc, battery->dsoc, battery->fcc, battery->nac);
 }
+
 
 static int rk817_bat_get_fcc(struct rk817_battery_device *battery)
 {
@@ -720,6 +728,7 @@ static int rk817_bat_get_fcc(struct rk817_battery_device *battery)
 
 	return fcc;
 }
+#if 0
 
 static void rk817_bat_inc_halt_cnt(struct rk817_battery_device *battery)
 {
@@ -759,6 +768,7 @@ static u8 rk817_bat_get_halt_cnt(struct rk817_battery_device *battery)
 {
 	return rk817_bat_read(battery, HALT_CNT_REG);
 }
+#endif 
 
 static int rk817_bat_is_initialized(struct rk817_battery_device *battery)
 {
@@ -774,6 +784,7 @@ static void rk817_bat_set_initialized_flag(struct rk817_battery_device *battery)
 	rk817_bat_write(battery, FG_INIT, val | (0x80));
 }
 
+#if 0
 static void rk817_bat_not_first_pwron(struct rk817_battery_device *battery)
 {
 	int now_cap, pre_soc, pre_cap;
@@ -869,25 +880,93 @@ finish:
 	    battery->pwroff_min, rk817_bat_get_prev_dsoc(battery),
 	    rk817_bat_get_prev_cap(battery));
 }
+#endif 
+static int rk817_bat_get_ocv_voltage(struct rk817_battery_device *battery)
+{
+	int vol, val = 0;
+
+	val = rk817_bat_read(battery, OCV_VOL_H) << 8;
+	val |= rk817_bat_read(battery, OCV_VOL_L);
+	vol = battery->voltage_k * val / 1000 + battery->voltage_b;
+
+	//if (battery->variant == RK809_ID) {
+	//	vol_temp = vol * battery->pdata->bat_res_up /
+	//		   battery->pdata->bat_res_down + vol;
+	//	vol = vol_temp;
+	//}
+
+	return vol;
+}
 
 static void rk817_bat_rsoc_init(struct rk817_battery_device *battery)
 {
+	int  pre_cap,vol_cap,vol_soc,ocv_vol,curr;
+
 	battery->is_first_power_on = is_rk817_bat_first_pwron(battery);
 	battery->pwroff_min = rk817_bat_get_off_count(battery);
 	battery->pwron_voltage = rk817_bat_get_pwron_voltage(battery);
-
-	DBG("battery = %d\n", rk817_bat_get_battery_voltage(battery));
-	DBG("%s: is_first_power_on = %d, pwroff_min = %d, pwron_voltage = %d\n",
+	
+	//ocv_vol = battery->pwron_voltage;
+	pre_cap = rk817_bat_get_prev_cap(battery);
+	//tanlq add 211231 sometimes can not read rk817 PWRON_VOL_H correctly
+	if(battery->pwron_voltage < 0){
+		battery->pwron_voltage = rk817_bat_get_battery_voltage(battery);
+	}
+	curr = rk817_bat_get_avg_current(battery);
+	//tanlq 220411: battery->pwron_voltage is not right,use ocv_vol
+	ocv_vol = rk817_bat_get_ocv_voltage(battery);
+	DBG("%s: is_first_power_on = %d, pwroff_min = %d, pwron_voltage = %d curr=%d ocv_vol=%d\n",
 	    __func__, battery->is_first_power_on,
-	    battery->pwroff_min, battery->pwron_voltage);
-
-	if (battery->is_first_power_on)
+	    battery->pwroff_min, battery->pwron_voltage,curr,ocv_vol);
+	if (battery->is_first_power_on) {
 		rk817_bat_first_pwron(battery);
-	else
-		rk817_bat_not_first_pwron(battery);
+		rk817_bat_save_dsoc(battery, battery->dsoc);
+		rk817_bat_save_cap(battery, battery->nac);
+		rk817_bat_init_coulomb_cap(battery, battery->nac); 
+		battery->remain_cap = battery->nac*1000;
+	} else {
+		// 20211025: we don't support uboot-charging,so don't touch the save cap/dsoc.
+		//rk817_bat_not_first_pwron(battery);
+		battery->dsoc = rk817_bat_get_prev_dsoc(battery);
+		battery->nac = rk817_bat_get_prev_cap(battery);
+		battery->remain_cap = rk817_bat_get_capacity_mah(battery)*1000;
 
-	 rk817_bat_save_dsoc(battery, battery->dsoc);
-	 rk817_bat_save_cap(battery, battery->nac);
+		//battery->dsoc = battery->rsoc;
+		battery->fcc = rk817_bat_get_fcc(battery);
+
+		//vol_cap = rk817_bat_vol_to_cap(battery,
+		//					battery->pwron_voltage);
+		vol_soc =
+			rk817_bat_vol_to_soc(battery,
+						 ocv_vol) * 1000;/* uAH */
+		vol_cap = rk817_bat_vol_to_cap(battery,
+									ocv_vol);
+		//diff_cap = vol_cap*1000 - battery->remain_cap;
+
+		printf("battery:pwroff_min:%d volt= %d,v_dsoc=%d,v_cap=%d,pre_cap=%d,remain_cap=%d fcc=%d \n",
+	 	battery->pwroff_min,battery->pwron_voltage,
+		vol_soc, vol_cap, pre_cap,battery->remain_cap,battery->fcc);
+		if (battery->pwroff_min >= 3) {
+			//if (vol_cap > battery->nac) 
+			if ((vol_cap - battery->nac) > (battery->fcc / 10)){
+				battery->remain_cap = vol_cap*1000;
+				battery->nac = vol_cap;
+				//rk817_bat_save_dsoc(battery, battery->dsoc);
+				rk817_bat_save_cap(battery, battery->nac);
+				rk817_bat_init_coulomb_cap(battery, battery->nac); 
+				printf("battery use v_cap:%d volt= %d nac=%d remain_cap=%d \n",
+					vol_cap,battery->pwron_voltage,battery->nac,battery->remain_cap);
+			}
+		}
+
+	}
+	// 20211025: don't touch this value.we may use the original valud by kernel.
+	 //rk817_bat_save_dsoc(battery, battery->dsoc);
+	 //rk817_bat_save_cap(battery, battery->nac);
+	 printf("battery:first_on=%d,volt= %d,ocv_vol= %d dsoc=%d,nac=%d,remain_cap=%d\n", 
+	 	battery->is_first_power_on,
+		battery->pwron_voltage,ocv_vol,
+	 	battery->dsoc, battery->nac, battery->remain_cap);
 }
 
 static int rk817_bat_calc_linek(struct rk817_battery_device *battery)
@@ -1306,13 +1385,16 @@ static int rk817_fg_init(struct rk817_battery_device *battery)
 	rk817_bat_write(battery, GG_CON, value | VOL_OUPUT_INSTANT_MODE);
 	if (battery->variant == RK817_ID) {
 		value =  rk817_bat_read(battery, BAT_DISCHRG);
-		rk817_bat_write(battery, BAT_DISCHRG, value & (~DIS_ILIM_EN));
+		rk817_bat_write(battery, GG_CON, value & (~DIS_ILIM_EN));
 	}
+	/* changed tower: repair can not boot on system when battery overdischarge. reg e9:x05-->0xff */
+	rk817_bat_write(battery, 0x00e9, 0xff);
+	/* changed end. */
 	rk817_bat_gas_gaugle_enable(battery);
 	rk817_bat_init_voltage_kb(battery);
 	rk817_bat_calibration(battery);
 	rk817_bat_rsoc_init(battery);
-	rk817_bat_init_coulomb_cap(battery, battery->nac);
+	//rk817_bat_init_coulomb_cap(battery, battery->nac); // 20211025: don't change the data(kernel use it).
 	rk817_bat_set_initialized_flag(battery);
 
 	battery->voltage_avg = rk817_bat_get_battery_voltage(battery);

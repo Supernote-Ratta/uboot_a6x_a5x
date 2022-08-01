@@ -1,5 +1,10 @@
 if TARGET_EVB_PX30
 
+config RATTA_BOARD
+	bool "Ratta project need board id"
+	help
+	  Ratta project open it.
+
 config SYS_BOARD
 	default "evb_px30"
 
